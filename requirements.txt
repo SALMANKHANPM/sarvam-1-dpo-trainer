@@ -1,0 +1,9 @@
+datasets
+trl
+wandb
+torch
+transformers
+huggingface_hub
+peft
+bitsandbytes
+sentencepiece
