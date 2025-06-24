@@ -1,9 +1,11 @@
 from set_env import set_env
 
+print("======= SETTING UP THE ENVIRONMENT ========")
 val = set_env()
 print("set_env() : ", val)
 
 
+print("======= IMPORTING LIBRARIES ========")
 # Importing Libraries
 import os
 import gc
@@ -16,9 +18,8 @@ import wandb
 from dotenv import load_dotenv
 from huggingface_hub import login
 
+print("======= LOADING .env FILE ========")
 load_dotenv()
-
-# Setting up the model
 
 # Model Name
 model_name = os.getenv("MODEL_NAME")
@@ -39,21 +40,37 @@ weight_decay = float(os.getenv("WEIGHT_DECAY"))
 seed = int(os.getenv("SEED"))
 max_seq_length = int(os.getenv("MAX_SEQ_LENGTH"))
 
+print("======= .env FILE LOADED SUCCESSFULLY ========")
 
+print("======= SETTING UP HUGGING FACE & WANDB ========")
 # Set up Hugging Face & Wandb
-login(token=hf_token)
+# login(token=hf_token, add_to_git_credential=True)
+login()
+print("======= HUGGING FACE SET UP SUCCESSFULLY ========")
+
+print("======= SETTING UP WANDB ========")
 wandb.login(key=wandb_token)
+print("======= WANDB SET UP SUCCESSFULLY ========")
 
+print("======= HUGGING FACE & WANDB SET UP SUCCESSFULLY ========")
+
+
+print("======= LOADING THE MODEL ========")
 # ===============================
-
 model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True)
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 
+print("======= MODEL LOADED SUCCESSFULLY ========")
+
+
+print("======= LOADING THE DATASET ========")
 # Dataset Tranformations
 dataset = load_dataset(dataset_name)['train']
+print("======= DATASET LOADED SUCCESSFULLY ========")
 
+print("======= TRANSFORMING THE DATASET ========")
 # Chatml Format
 def chatml_format(example):
     # bos and eos tokens
@@ -92,20 +109,23 @@ dataset = dataset.map(
     remove_columns=original_columns,
 )
 
-# Print sample
-dataset[1]
+print(dataset[0])
+print("======= DATASET TRANSFORMED SUCCESSFULLY ========")
 
+print("======= SPLITTING THE DATASET ========")
 
 dataset_split = dataset.train_test_split(test_size=0.1, seed=42)
 train_dataset = dataset_split['train']
 eval_dataset = dataset_split['test']
-print("==================")
+
+print("======= DATASET SPLIT SUCCESSFULLY ========")
+
+print("======= PRINTING THE DATASET ========")
 print(f"Train samples: {len(train_dataset)}")
 print(f"Eval samples: {len(eval_dataset)}")
-print("==================")
+print("======= DATASET SPLIT SUCCESSFULLY ========")
 
-
-# ===============================
+print("======= SETTING UP THE TRAINING ARGUMENTS ========")
 # Training arguments
 training_args = DPOConfig(
     per_device_train_batch_size=batch_size,
@@ -132,6 +152,7 @@ training_args = DPOConfig(
     dataloader_pin_memory=False,
 )
 
+print("======= CREATING THE DPO TRAINER ========")
 # Create DPO trainer
 dpo_trainer = DPOTrainer(
     model,
@@ -141,14 +162,16 @@ dpo_trainer = DPOTrainer(
     eval_dataset=eval_dataset #10%
 )
 
+print("======= TRAINING THE MODEL ========")
 # Fine-tune model with DPO
 dpo_trainer.train()
+print("======= TRAINING COMPLETED ========")
 
-# ===============================
-
+print("======= SAVING THE MODEL ========")
 dpo_trainer.model.save_pretrained("final_checkpoint")
 tokenizer.save_pretrained("final_checkpoint")
 
+print("======= LOADING THE CHECKPOINTS ========")
 # Loading the checkpoints
 model =  AutoModelForCausalLM.from_pretrained(
     "final_checkpoint",
@@ -158,8 +181,9 @@ model =  AutoModelForCausalLM.from_pretrained(
 )
 tokenizer = AutoTokenizer.from_pretrained("final_checkpoint")
 
+print("======= UPLOADING TO HUGGINGFACE ========")
 # Uploading to Huggingface
 model.push_to_hub(trained_model_name, use_temp_dir=False, token=hf_token)
 tokenizer.push_to_hub(trained_model_name, use_temp_dir=False, token=hf_token)
 
-print("Training Completed")
+print("======= TRAINING COMPLETED ========")
